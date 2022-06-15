@@ -5,30 +5,21 @@ using Telegram.Bot.Types;
 
 namespace SurveyChatbot.Models;
 
-public class ClosedQuestion : IQuestion
+public class ClosedQuestion : Question
 {
-    public long Id { get; init; }
-    public string Text { get; set; }
-    public string[] Answers { get; set; }
-    public IReplyMarkup GetQuestionMarkup()
-    {
-        var markupButtons = Answers
-            .Select(a => InlineKeyboardButton.WithCallbackData(a, a));
-        return new InlineKeyboardMarkup(new[] {markupButtons});
-    }
+    public string[] Answers { get; init; }
 
-    public ClosedQuestion(string text, string[] answers)
+    public ClosedQuestion() : base() { }
+
+    public ClosedQuestion(long id, string text, string[] answers, Survey survey) : base(id, text, survey)
     {
-        Text = text;
         Answers = answers;
     }
 
-    public ClosedQuestion(long id, string text, string[] answers) : this(text, answers)
+    public override IReplyMarkup GetQuestionMarkup()
     {
-        Id = id;
+        var markupButtons = Answers
+            .Select(a => InlineKeyboardButton.WithCallbackData(a, a));
+        return new InlineKeyboardMarkup(new[] { markupButtons });
     }
-
-    //public Task<Message> SendMessageAsync(ITelegramBotClient botClient, Message message)
-    //{
-    //}
 }
