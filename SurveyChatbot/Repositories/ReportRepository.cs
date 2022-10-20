@@ -13,6 +13,11 @@ public class ReportRepository : IDataRepository<Report>
         _context = context;
     }
 
+    public async Task<Report[]> GetAllAsync()
+    {
+        return await _context.Reports.ToArrayAsync();
+    }
+
     public async Task<Report?> GetByIdAsync(long id)
     {
         return await _context.Reports.FindAsync(id);
@@ -27,5 +32,11 @@ public class ReportRepository : IDataRepository<Report>
     public async Task<bool> ContainsAsync(Report data)
     {
         return await _context.Reports.ContainsAsync(data);
+    }
+
+    public void Add(Report data)
+    {
+        _context.Reports.Add(data);
+        _context.SaveChanges();
     }
 }

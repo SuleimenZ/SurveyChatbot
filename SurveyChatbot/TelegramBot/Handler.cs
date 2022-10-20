@@ -1,5 +1,6 @@
 using SurveyChatbot.Models;
 using SurveyChatbot.Repositories;
+using SurveyChatbot.Utility;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Types;
@@ -12,25 +13,22 @@ namespace SurveyChatbot.TelegramBot;
 
 public class Handler
 {
-    private readonly SurveyRepository _surveyRepo;
     private readonly UserRepository _userRepo;
     private readonly QuestionRepository _questionRepo;
     private readonly ReportRepository _reportRepo;
+    private readonly SurveyRepository _surveyRepo;
+    private readonly MenuHandler _menuHandler;
 
     private Message? _lastBotMessage;
     private Message? _lastUserMessage;
-    private bool _surveyMode = false;
-
-    private Report _report = new Report();
-    private Survey? _survey;
-    private List<string> _answers = new();
 
     public Handler(SurveyRepository surveyRepo, UserRepository userRepo, QuestionRepository questionRepo, ReportRepository reportRepo)
     {
-        _surveyRepo = surveyRepo;
         _userRepo = userRepo;
         _questionRepo = questionRepo;
         _reportRepo = reportRepo;
+        _surveyRepo = surveyRepo;
+        _menuHandler = new MenuHandler(surveyRepo, questionRepo, reportRepo, userRepo);
     }
 
     public Task HandleErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
@@ -84,7 +82,7 @@ public class Handler
         {
             "/start" => Welcome(botClient, message),
             "/inline" => SendInlineKeyboard(botClient, message),
-            "/testsurvey" => StartTestSurvey(botClient, message),
+            "/surveys" => ShowSurveys(botClient, message),
             "/keyboard" => SendReplyKeyboard(botClient, message),
             _ => Usage(botClient, message)
         };
@@ -94,8 +92,7 @@ public class Handler
         async Task<Message> Welcome(ITelegramBotClient botClient, Message message)
         {
             var welcome = $"Hello, {message.From!.FirstName}. " + 
-                          "Navigation menu is not implemented yet. " +
-                          "Type /testsurvey to start example survey";
+                          "Type /surveys to show surveys";
 
             await RegisterUser(message.From);
             return await botClient.SendTextMessageAsync(
@@ -112,31 +109,26 @@ public class Handler
             return _lastBotMessage;
         }
 
-        async Task StartTestSurvey(ITelegramBotClient botClient, Message message)
+        async Task<Message> ShowSurveys(ITelegramBotClient botClient, Message message)
         {
-            _surveyMode = true;
+            (string text, IReplyMarkup markup) = await _menuHandler.ShowSurveys();
 
-            //test survey has id of 1
-            _survey = await _surveyRepo.GetByIdAsync(1);
-            _survey.ResetQuestionCounter();
-            _report.User = await _userRepo.GetByIdAsync(message.From!.Id);
-            _report.Survey = _survey!;
-
-            var question = _survey!.GetNextQuestion();
             _lastBotMessage = await botClient.SendTextMessageAsync(
                 chatId: message.Chat.Id,
-                text: question.Text,
-                replyMarkup: question.GetQuestionMarkup());
+                text: text,
+                replyMarkup: markup,
+                parseMode: ParseMode.Html);
+            return _lastBotMessage;
         }
 
         async Task<Message> SendReplyKeyboard(ITelegramBotClient botClient, Message message)
         {
             ReplyKeyboardMarkup replyKeyboardMarkup = new(
-                new[]
-                {
-                        new KeyboardButton[] { "1.1", "1.2" },
-                        new KeyboardButton[] { "2.1", "2.2" },
-                })
+            new[]
+            {
+                    new KeyboardButton[] { "1.1", "1.2" },
+                    new KeyboardButton[] { "2.1", "2.2" },
+            })
             {
                 ResizeKeyboard = true
             };
@@ -149,6 +141,7 @@ public class Handler
         async Task<Message> Usage(ITelegramBotClient botClient, Message message)
         {
             const string usage = "Usage:\n" +
+                                 "/surveys - show all surveys\n" +
                                  "/testsurvey - start test survey";
 
             return await botClient.SendTextMessageAsync(chatId: message.Chat.Id,
@@ -171,38 +164,16 @@ public class Handler
         }
     }
 
-    // Process Inline Keyboard callback data
     private async Task BotOnCallbackQueryReceived(ITelegramBotClient botClient, CallbackQuery callbackQuery)
     {
+        (string text, IReplyMarkup markup) = await _menuHandler.HandleUpdate(callbackQuery);
+
         await botClient.EditMessageTextAsync(
-              chatId: _lastBotMessage.Chat.Id,
-              messageId: _lastBotMessage.MessageId,
-              text: _lastBotMessage.Text + $"\nYou selected: {callbackQuery.Data}");
-
-        if (_surveyMode) await ContinueSurvey(botClient);
-
-        async Task ContinueSurvey(ITelegramBotClient botClient)
-        {
-            _answers.Add(callbackQuery.Data);
-            if (_survey!.HasNextQuestion())
-            {
-                var question = _survey.GetNextQuestion();
-
-                _lastBotMessage = await botClient.SendTextMessageAsync(
-                                        chatId: _lastBotMessage.Chat.Id,
-                                        text: question.Text,
-                                        replyMarkup: question.GetQuestionMarkup());
-            }
-            else
-            {
-                _surveyMode = false;
-                _report.Answers = _answers.ToArray();
-                await _reportRepo.AddAsync(_report);
-                _answers = new();
-                _report = new();
-                _survey = null;
-            }
-        }
+            chatId: _lastBotMessage.Chat.Id,
+            messageId: _lastBotMessage.MessageId,
+            text: text,
+            replyMarkup: (InlineKeyboardMarkup)markup,
+            parseMode: ParseMode.Html);
     }
 
     private async Task BotOnInlineQueryReceived(ITelegramBotClient botClient, InlineQuery inlineQuery)

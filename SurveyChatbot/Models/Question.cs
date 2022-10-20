@@ -4,25 +4,36 @@ using Telegram.Bot.Types.ReplyMarkups;
 
 namespace SurveyChatbot.Models;
 
-public abstract class Question
+public class Question
 {
     public long Id { get; init; }
     public string Text { get; init; }
     public Survey Survey { get; set; }
+    public string[] Answers { get; init; }
+    public Question() {}
 
-#pragma warning disable CS8618
-    protected Question() {}
-#pragma warning restore CS8618
-
-    protected Question(long id, string text, Survey survey)
+    public Question(long id, string text, string[] answers, Survey survey)
     {
         Id = id;
         Text = text;
         Survey = survey;
+        Answers = answers;
     }
 
-    public virtual IReplyMarkup GetQuestionMarkup()
+    public IReplyMarkup GetQuestionMarkup()
     {
-        return new InlineKeyboardMarkup(new InlineKeyboardButton[] {});
+        var markupButtons = Answers
+            .Select(a => InlineKeyboardButton.WithCallbackData(a, a));
+        return new InlineKeyboardMarkup(new[] { markupButtons });
     }
+
+    //public virtual IReplyMarkup GetQuestionMarkup()
+    //{
+    //    return new InlineKeyboardMarkup(new InlineKeyboardButton[] { });
+    //}
+
+    //public virtual string[] HandleResponse(Update update)
+    //{
+    //    return Array.Empty<string>();
+    //}
 }

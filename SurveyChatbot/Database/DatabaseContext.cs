@@ -10,7 +10,7 @@ public class DatabaseContext : DbContext
     public DbSet<Survey> Surveys { get; set; }
     public DbSet<Report> Reports { get; set; }
     public DbSet<Question> Questions { get; set; }
-    public DbSet<ClosedQuestion> ClosedQuestions { get; set; }
+    //public DbSet<ClosedQuestion> ClosedQuestions { get; set; }
 #pragma warning restore CS8618
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -26,12 +26,12 @@ public class DatabaseContext : DbContext
         modelBuilder.Entity<Question>()
             .ToTable("questions")
             .Property(e => e.Id).ValueGeneratedOnAdd();
-        modelBuilder.Entity<ClosedQuestion>()
-            .Property(p => p.Id).ValueGeneratedOnAdd();
+        //modelBuilder.Entity<ClosedQuestion>()
+        //    .Property(p => p.Id).ValueGeneratedOnAdd();
 
-        modelBuilder.Entity<Question>()
-            .HasDiscriminator<string>("QuestionType")
-            .HasValue<ClosedQuestion>("Closed");
+        //modelBuilder.Entity<Question>()
+        //    .HasDiscriminator<string>("QuestionType")
+        //    .HasValue<ClosedQuestion>("Closed");
 
         modelBuilder.Entity<Survey>()
             .HasMany(s => s.Questions)

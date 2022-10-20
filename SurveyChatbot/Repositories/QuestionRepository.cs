@@ -13,6 +13,11 @@ public class QuestionRepository : IDataRepository<Question>
         _context = databaseContext;
     }
 
+    public async Task<Question[]> GetAllAsync()
+    {
+        return await _context.Questions.ToArrayAsync();
+    }
+
     public async Task<Question?> GetByIdAsync(long id)
     {
         return await _context.Questions.FindAsync(id);
@@ -27,5 +32,11 @@ public class QuestionRepository : IDataRepository<Question>
     public async Task<bool> ContainsAsync(Question data)
     {
         return await _context.Questions.ContainsAsync(data);
+    }
+
+    public void Add(Question data)
+    {
+        _context.Questions.Add(data);
+        _context.SaveChanges();
     }
 }
