@@ -21,7 +21,7 @@ namespace SurveyChatbot.Utility
         private Report _report = new();
         private Survey _survey = new();
 
-        private int _currentPageId = -1;
+        private int _currentPageId = -2;
 
         public SurveyHandler(MenuHandler menuHandler, SurveyRepository surveyRepo, QuestionRepository questionRepo, ReportRepository reportRepo, UserRepository userRepo)
         {
@@ -34,7 +34,7 @@ namespace SurveyChatbot.Utility
 
         public async Task Setup(long userId, long surveyId)
         {
-            _currentPageId = -1;
+            _currentPageId = -2;
             _survey = (await _surveyRepo.GetByIdAsync(surveyId))!;
             var user = (await _userRepo.GetByIdAsync(userId));
             _report = new(_survey, user);
@@ -44,8 +44,9 @@ namespace SurveyChatbot.Utility
 
         public async Task SetupBySearchId(long userId, string surveySearchId)
         {
-            _currentPageId = -1;
+            _currentPageId = -2;
             _survey = (await _surveyRepo.GetBySearchIdAsync(surveySearchId))!;
+            if (_survey == null) { return; }
             var user = (await _userRepo.GetByIdAsync(userId));
             _report = new(_survey, user);
 
@@ -56,7 +57,7 @@ namespace SurveyChatbot.Utility
         {
             return callback.Data switch
             {
-                _ when _currentPageId == -1 => await GetSurveyDetails(),
+                _ when _currentPageId == -2 => await GetSurveyDetails(),
                 "\U0001F3C1" => await GetConfirmationPage(),            //Chequered flag
                 "\u274C" when _currentPageId == _survey.Questions.Count() - 1 => await GetQuestionById(_currentPageId), //Cross mark
                 "\u2705" when _currentPageId == _survey.Questions.Count() - 1 => await EndSurvey(),                     //Check mark
@@ -98,7 +99,7 @@ namespace SurveyChatbot.Utility
 
             InlineKeyboardButton rightNavButton = _currentPageId switch
             {
-                _ when _currentPageId == _survey.Questions.Count - 1 => InlineKeyboardButton.WithCallbackData("\U0001F3C1", "\U0001F3C1"),
+                _ when _currentPageId == _survey.Questions.Count() - 1 => InlineKeyboardButton.WithCallbackData("\U0001F3C1", "\U0001F3C1"),
                 _ => InlineKeyboardButton.WithCallbackData("\u25b6", "\u25b6")
             };
 
@@ -106,7 +107,7 @@ namespace SurveyChatbot.Utility
             {
                 new InlineKeyboardButton[] { leftNavButton, rightNavButton },
                 question.Answers.Select((answer, answerId) => InlineKeyboardButton.WithCallbackData($"{(answerIsSelected(answerId) ? "\u2705 " : "")}" + answer, answer))
-            });
+            });;
             return await Task.FromResult((questionText, markup));
         }
 
@@ -122,8 +123,9 @@ namespace SurveyChatbot.Utility
             return await GetQuestionById(id);
         }
 
-        private async Task<(string text, IReplyMarkup markup)> GetSurveyDetails()
+        public async Task<(string text, IReplyMarkup markup)> GetSurveyDetails()
         {
+            if (_survey == null) { return await Task.FromResult(("Survey not found", InlineKeyboardMarkup.Empty())); }
             string text = "<b>Do you want to start this survey?</b>\n\n" +
                          $"<b>{_survey.Name}</b>\n" +
                          $"{_survey.Description}\n\n" +
@@ -140,6 +142,11 @@ namespace SurveyChatbot.Utility
 
         private async Task<(string text, IReplyMarkup markup)> GetConfirmationPage()
         {
+            if(_survey == null)
+            {
+                return await Task.FromResult(("Survey not found", InlineKeyboardMarkup.Empty()));
+            }
+
             int numOfQuestions = _report.Answers.Count();
             int numOfQuestionsAnswered = _report.Answers.Where(a => a != 0).Count();
             string text = "<b>Do you want to end this survey?</b>\n\n" +

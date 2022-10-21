@@ -37,9 +37,6 @@ namespace SurveyChatbot.Utility
         {
             return callback!.Data switch
             {
-                //"\u274C" when _surveyMode => await CancelSurvey(),                          //Cross mark
-                //"\u2705" when _surveyMode => await _surveyHandler.HandleUpdate(callback),   //Check mark
-                //"\U0001F3C1" when _surveyMode => await EndSurvey(),                         //Chequered flag
                 _ when _surveyMode => await _surveyHandler.HandleUpdate(callback),
                 "\u2800" => await ShowSurveys(),                                            //Blank
                 "\u25b6" => await GetNextPage(),                                            //Right arrow
@@ -93,6 +90,30 @@ namespace SurveyChatbot.Utility
 
             return (text, markup);
         }
+
+        public async Task<(string text, IReplyMarkup markup)> ShowSurveyBySearchId(Message message)
+        {
+            var split = message.Text!.Split();
+
+            if (split.Length > 1 && isValid(split[1]))
+            {
+                _surveyMode = true;
+                await _surveyHandler.SetupBySearchId(message.From!.Id, split[1]);
+                return await _surveyHandler.GetSurveyDetails();
+            }
+
+            return await Task.FromResult(("Incorrect search id", InlineKeyboardMarkup.Empty()));
+        }
+
+        private bool isValid(string searchId)
+        {
+            if(searchId == null) { return false; }
+            if(searchId.Length != 8) { return false; }
+            if (searchId.Any(c => !char.IsLetterOrDigit(c))) { return false; }
+
+            return true;
+        }
+
         private async Task<(string text, IReplyMarkup markup)> GetNextPage()
         {
             _currentPageId++;
@@ -122,11 +143,6 @@ namespace SurveyChatbot.Utility
             _surveyMode = true;
             await _surveyHandler.Setup(callback.From.Id, long.Parse(callback.Data));
             return await HandleUpdate(callback);
-        }
-
-        public void ResetSurveyId()
-        {
-            SelectedSurveyId = -1;
         }
     }
 }

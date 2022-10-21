@@ -30,7 +30,7 @@ public class SurveyRepository : IDataRepository<Survey>
 
     public async Task<Survey?> GetBySearchIdAsync(string searchId)
     {
-        var survey = await _context.Surveys.FirstAsync(s => s.SearchId == searchId);
+        var survey = await _context.Surveys.FirstOrDefaultAsync(s => s.SearchId == searchId);
 
         //Do not remove below line, as it seems to load all questions for survey.
         //Without it questions list will be empty.
@@ -53,5 +53,10 @@ public class SurveyRepository : IDataRepository<Survey>
     {
         _context.Surveys.Add(data);
         _context.SaveChanges();
+    }
+
+    public Survey[] GetAll()
+    {
+        return _context.Surveys.ToArray();
     }
 }

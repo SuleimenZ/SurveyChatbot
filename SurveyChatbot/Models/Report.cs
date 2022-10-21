@@ -15,7 +15,7 @@ public class Report
     {
         Survey = survey;
         User = user;
-        Answers = new int[Survey.Questions.Count];
+        Answers = new int[Survey.Questions.Count()];
     }
 
     public void AddAnswer(int questionId, string answer)
