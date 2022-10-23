@@ -125,12 +125,20 @@ public class Handler
 
         async Task<Message> SendResults(ITelegramBotClient botClient, Message message)
         {
-            var stream = await _menuHandler.SendResults(message);
+            (var stream, string fileName) = await _menuHandler.SendResults(message);
+            if(stream == null)
+            {
+                _lastBotMessage = await botClient.SendTextMessageAsync(
+                    chatId: message.Chat.Id,
+                    text: "No survey found with this id",
+                    parseMode: ParseMode.Html);
+                return _lastBotMessage;
+            }
             _lastBotMessage = await botClient.SendDocumentAsync(
                 chatId: message.Chat.Id,
-                document: new Telegram.Bot.Types.InputFiles.InputOnlineFile(stream, "test.xlsx"));
+                document: new Telegram.Bot.Types.InputFiles.InputOnlineFile(stream, fileName));
             return _lastBotMessage;
-        }
+            }
 
         async Task<Message> Usage(ITelegramBotClient botClient, Message message)
         {

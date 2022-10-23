@@ -105,25 +105,23 @@ namespace SurveyChatbot.Utility
             return await Task.FromResult(("Incorrect search id", InlineKeyboardMarkup.Empty()));
         }
 
-        public async Task<Stream?> SendResults(Message message)
+        public async Task<(Stream? stream, string fileName)> SendResults(Message message)
         {
             var split = message.Text!.Split();
 
             if (split.Length > 1 && isValid(split[1]))
             {
                 var survey = await _surveyRepo.GetBySearchIdAsync(split[1]);
-                //if (survey == null) { return await Task.FromResult((Nul)); }
+                if (survey == null) { return (null, ""); }
                 var reports = await _reportRepo.GetAllBySurveyIdAsync(survey.Id);
 
                 ExcelSerializer es = new();
 
-                var stream = es.Serialize(survey, reports);
-                //if (stream == null) { return await Task.FromResult((false, "Unexpected error occured")); }
-                return await stream;
+                var result = es.Serialize(survey, reports);
+                return await result;
             }
 
-            //return await Task.FromResult((false, "Incorrect search id"));
-            return null;
+            return (null, "");
         }
 
         private bool isValid(string searchId)

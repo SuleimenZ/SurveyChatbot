@@ -28,16 +28,16 @@ namespace SurveyChatbot.Utility
             FolderPath = folderPath;
         }
 
-        public async Task<Stream?> Serialize(Survey survey, Report[] reports)
+        public async Task<(Stream? stream, string fileName)> Serialize(Survey survey, Report[] reports)
         {
             _survey = survey;
             _reports = reports;
             try
             {
-
                 if (!Directory.Exists(FolderPath)) { Directory.CreateDirectory(FolderPath); }
                 string stamp = DateTime.Now.ToString("yyyyMMddTHHmmss");
-                string path = Path.Combine(FolderPath, $"{_survey.Name} {stamp}.xlsx");
+                string fileName = $"{_survey.Name} {stamp}.xlsx";
+                string path = Path.Combine(FolderPath, fileName);
                 var file = new FileInfo(path);
                 if (file.Exists) { file.Delete(); }
 
@@ -50,12 +50,11 @@ namespace SurveyChatbot.Utility
                 //Detailed stats sheet
                 GenerateExtraStats(package, sheet);
 
-                await package.SaveAsync();
-                return File.OpenRead(path);
+                return (new MemoryStream(await package.GetAsByteArrayAsync()), fileName);
             }
             catch (Exception)
             {
-                return null;
+                return (null, "");
             }
         }
 
