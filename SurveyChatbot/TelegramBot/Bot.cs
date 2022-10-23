@@ -19,16 +19,21 @@ namespace SurveyChatbot.TelegramBot
         public UserRepository UserRepo;
         public QuestionRepository QuestionRepo;
         public ReportRepository ReportRepo;
+
+        public Bot()
+        {
+            SurveyRepo = new(context);
+            UserRepo = new(context);
+            QuestionRepo = new(context);
+            ReportRepo = new(context);
+        }
+
         public async Task Start()
         {
             var bot = new TelegramBotClient(Configuration.BotToken);
             User me = await bot.GetMeAsync();
             Console.Title = me.Username ?? "My awesome Bot";
 
-            SurveyRepo = new(context);
-            UserRepo = new(context);
-            QuestionRepo = new(context);
-            ReportRepo = new(context);
             Handler handler = new(SurveyRepo, UserRepo, QuestionRepo, ReportRepo);
 
             // StartReceiving does not block the caller thread. Receiving is done on the ThreadPool.

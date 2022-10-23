@@ -53,11 +53,11 @@ public class Handler
             // UpdateType.ShippingQuery:
             // UpdateType.PreCheckoutQuery:
             // UpdateType.Poll:
-            UpdateType.Message => BotOnMessageReceived(botClient, update.Message!),
             //UpdateType.EditedMessage => BotOnMessageReceived(botClient, update.EditedMessage!),
-            UpdateType.CallbackQuery => BotOnCallbackQueryReceived(botClient, update.CallbackQuery!),
             //UpdateType.InlineQuery => BotOnInlineQueryReceived(botClient, update.InlineQuery!),
             //UpdateType.ChosenInlineResult => BotOnChosenInlineResultReceived(botClient, update.ChosenInlineResult!),
+            UpdateType.Message => BotOnMessageReceived(botClient, update.Message!),
+            UpdateType.CallbackQuery => BotOnCallbackQueryReceived(botClient, update.CallbackQuery!),
             _ => UnknownUpdateHandlerAsync(botClient, update)
         };
 
@@ -74,7 +74,7 @@ public class Handler
     private async Task BotOnMessageReceived(ITelegramBotClient botClient, Message message)
     {
         _lastUserMessage = message;
-        if (message.Type != MessageType.Text) 
+        if (message.Type != MessageType.Text)
             return;
 
         var action = message.Text!.Split(' ')[0] switch
@@ -82,15 +82,16 @@ public class Handler
             "/start" => Welcome(botClient, message),
             "/surveys" => ShowSurveys(botClient, message),
             "/search" => ShowSurveyBySearchId(botClient, message),
+            "/results" => SendResults(botClient, message),
             _ => Usage(botClient, message)
         };
-        await RegisterUser(message.From);
         await action;
 
 
         async Task<Message> Welcome(ITelegramBotClient botClient, Message message)
         {
-            var welcome = $"Hello, {message.From!.FirstName}. " + 
+            await RegisterUser(message.From);
+            var welcome = $"Hello, {message.From!.FirstName}. " +
                           "Type /surveys to show surveys";
             return await botClient.SendTextMessageAsync(
                                     chatId: message.Chat.Id,
@@ -122,11 +123,21 @@ public class Handler
             return _lastBotMessage;
         }
 
+        async Task<Message> SendResults(ITelegramBotClient botClient, Message message)
+        {
+            var stream = await _menuHandler.SendResults(message);
+            _lastBotMessage = await botClient.SendDocumentAsync(
+                chatId: message.Chat.Id,
+                document: new Telegram.Bot.Types.InputFiles.InputOnlineFile(stream, "test.xlsx"));
+            return _lastBotMessage;
+        }
+
         async Task<Message> Usage(ITelegramBotClient botClient, Message message)
         {
             const string usage = "Usage:\n" +
                                  "/surveys - show all surveys\n" +
-                                 "/search - search survey by ID";
+                                 "/search XXXXXXXX - search survey by id\n" +
+                                 "/results XXXXXXXX - get survey results";
 
             return await botClient.SendTextMessageAsync(chatId: message.Chat.Id,
                                                         text: usage,

@@ -18,6 +18,11 @@ public class ReportRepository : IDataRepository<Report>
         return await _context.Reports.ToArrayAsync();
     }
 
+    public async Task<Report[]> GetAllBySurveyIdAsync(long id)
+    {
+        return await _context.Reports.Where(r => r.Survey.Id == id).ToArrayAsync();
+    }
+
     public async Task<Report?> GetByIdAsync(long id)
     {
         return await _context.Reports.FindAsync(id);

@@ -29,4 +29,8 @@ public class Report
         int answerId = Array.IndexOf(Survey.Questions[questionId].Answers, answer);
         Answers[questionId] -= (int)Math.Pow(2, answerId);
     }
+    public string[] GetSelectedAnswers(int questionId)
+    {
+        return Survey.Questions[questionId].Answers.Where((answer, answerId) => ((Answers[questionId] >> answerId) & 1) != 0).ToArray();
+    }
 }
